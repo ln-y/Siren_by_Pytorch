@@ -26,7 +26,7 @@ class expCoord(fs.Coordinate_wise_Median):
 
 def exp(client_num,malicious_num,communication_rounds,client_epchoes,non_IID_degree,Attack=fc.Sign_flipping,
         defence=fs.Siren_PA,defence_dic=None,IID=False):
-
+    print(int(malicious_num/client_num*10))
     clientL = []
     if IID:
         ind = torch.randperm(train_size)
@@ -54,23 +54,30 @@ def exp(client_num,malicious_num,communication_rounds,client_epchoes,non_IID_deg
                  j in
                  range(10)]))
             print(i, indt[i].shape)
+            incid=torch.randperm(indt[i].shape[0])
+            indt[i]=indt[i][incid]
             perc_ind += pmatrix[i]
         # show
         # for ten in indt:
         #     print([torch.sum(y_traint[ten]==i).item() for i in range(10)])
-        for i in range(client_num):
-            dataL = []
-            dataL.append(X_traint[indt[i]])
-            dataL.append(y_traint[indt[i]])
-            if i < malicious_num:
-                client = Attack(dataL, client_epchos=client_epchoes,
-                                          boosting_factor=10,batch_size=1024)
-            else:
-                if defence in defenceL[:3]:
-                    client=Client(dataL,client_epchos=client_epchoes,batch_size=1024)
+        pind=int(client_num/10)
+        for i in range(10):
+            indtotal=indt[i]
+            isize=indtotal.shape[0]
+            for j in range(pind):
+                dataL = []
+                dataL.append(X_traint[indtotal[int(isize/pind*j):int(isize/pind*(j+1))]])
+                dataL.append(y_traint[indtotal[int(isize/pind*j):int(isize/pind*(j+1))]])
+                #print(dataL[1].shape)
+                if i < int(10*malicious_num/client_num):
+                    client = Attack(dataL, client_epchos=client_epchoes,
+                                    boosting_factor=10, batch_size=1024)
                 else:
-                    client = fc.Siren_Client(dataL, client_epchos=client_epchoes, acc_control=Cc,batch_size=1024)
-            clientL.append(client)
+                    if defence in defenceL[:3]:
+                        client = Client(dataL, client_epchos=client_epchoes, batch_size=1024)
+                    else:
+                        client = fc.Siren_Client(dataL, client_epchos=client_epchoes, acc_control=Cc, batch_size=1024)
+                clientL.append(client)
 
 
 
@@ -130,10 +137,10 @@ if __name__ == '__main__':
     Ca=0.5
     rootsize=100
 
-    client_num = 10
+    client_num = 200
     malicious_num = 1
-    communication_rounds = 40
-    client_epchoes = 5
+    communication_rounds =12
+    client_epchoes = 1
     non_IID_degree = 0.1
 
     attackL = [fc.Sign_flipping, fc.Label_flipping, fc.Target_poisoning]
@@ -147,7 +154,7 @@ if __name__ == '__main__':
     totalL, train_size, test_size = data_to_device_s('MINST', device)
     X_traint, y_traint, X_testt, y_testt = totalL
 
-    with open('mlog.txt', 'w+', encoding='utf-8') as f:
+    with open('mlog50.txt', 'w+', encoding='utf-8') as f:
         pass
     dic_data={}
     pa_data={}
@@ -156,34 +163,25 @@ if __name__ == '__main__':
         attack=attackL[j]
         for i in range(len(defenceL)):
             for non_IID_degree in [0.1,0.5]:
-                defence = defenceL[i]
-                defence_dic = defence_dicL[i]
-                accL,ser = exp(client_num, 4, communication_rounds, client_epchoes, non_IID_degree, attack, defence,
-                           defence_dic)
-                expLabel = attackL_name[j] + '+' + defenceL_name[i] + '+mal_num_4'+' IID='+str(non_IID_degree)
-                acct = torch.tensor(accL)
-                dic_data[expLabel] = acct
-                ctime = time.time() - ti
-                ti = time.time()
-                with open('mlog.txt', 'a', encoding='utf-8') as f:
-                    f.write(str(j + 1) + ' ' + str(i + 1) + ' ' + "{:.3f}".format(
-                        accL[-1]) + '\t' + expLabel + '\tcost:' + "{:.3f}".format(ctime) + '\n')
-                if i==5:
-                    pa_data[expLabel]=ser.malious_indexL
-                accL,ser = exp(client_num, 8, communication_rounds, client_epchoes, non_IID_degree, attack, defence,
-                           defence_dic)
-                expLabel = attackL_name[j] + '+' + defenceL_name[i] + '+mal_num_8'+' IID='+str(non_IID_degree)
-                acct = torch.tensor(accL)
-                dic_data[expLabel] = acct
-                ctime = time.time() - ti
-                ti = time.time()
-                with open('mlog.txt', 'a', encoding='utf-8') as f:
-                    f.write(str(j + 1) + ' ' + str(i + 1) + ' ' + "{:.3f}".format(
-                        accL[-1]) + '\t' + expLabel + '\tcost:' + "{:.3f}".format(ctime) + '\n')
-                if i==5:
-                    pa_data[expLabel]=ser.malious_indexL
-    torch.save(dic_data,'accres.pth')
-    torch.save(pa_data,'pa_data.pth')
+                for mal_p in [0.4,0.8]:
+                    defence = defenceL[i]
+                    defence_dic = defence_dicL[i]
+                    expLabel = attackL_name[j] + '+' + defenceL_name[i] + '+mal_p'+ str(mal_p) + ' IID=' + str(non_IID_degree)
+                    print('---------------------' + expLabel + '---------------------')
+                    accL, ser = exp(client_num, int(mal_p*client_num), communication_rounds, client_epchoes, non_IID_degree, attack,
+                                    defence,defence_dic)
+                    acct = torch.tensor(accL)
+                    dic_data[expLabel] = acct
+                    ctime = time.time() - ti
+                    ti = time.time()
+                    with open('mlog200.txt', 'a', encoding='utf-8') as f:
+                        f.write(str(j + 1) + ' ' + str(i + 1) + ' ' + "{:.3f}".format(
+                            accL[-1]) + '\t' + expLabel + '\tcost:' + "{:.3f}".format(ctime) + '\n')
+                    if i == 5:
+                        pa_data[expLabel] = ser.malious_indexL
+
+    torch.save(dic_data,'accres200.pth')
+    torch.save(pa_data,'pa_data200.pth')
 
 
 
