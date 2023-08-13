@@ -21,7 +21,7 @@ def cos_tensor(t1,t2):
     cosim=torch.sum(t1*t2_fl)/(torch.sum(t1**2)*torch.sum(t2_fl**2))**0.5
     return cosim
 
-def cos_analysis(t1,t2):
+def cos_analysis(t1,t2,show=False):
     '''
         :param t1: flattened tensor(1D)
         :param t2: a tensor dict
@@ -29,6 +29,8 @@ def cos_analysis(t1,t2):
     '''
     t2_fl = torch.cat([ten.flatten() for ten in t2.values()])
     dotsum=torch.sum(t1*t2_fl)
+    if show:
+        print(dotsum>0)
     return dotsum>0
 
 def tensor_dic_copy(dic):
@@ -188,7 +190,6 @@ class CNN(nn.Module):
             nn.ReLU(),
             nn.Linear(128,10),
         )
-        print('CNN model created')
 
     def forward(self,x):
         x=self.conv(x)
@@ -620,9 +621,9 @@ if __name__ == '__main__':
 
     totalL,train_size,test_size=data_to_device_s('MINST',device)
     X_traint, y_traint, X_testt, y_testt=totalL
-    client_num=10
+    client_num=50
     communication_rounds=15
-    client_epchos=1
+    client_epchos=5
 
     ind=torch.randperm(train_size)
     per_count=(train_size/client_num)
